@@ -47,7 +47,10 @@ class Note {
     content:json["content"],
   );
   clone()=>new Note(id: id,colorIndex: colorIndex,content: content,creationDate: creationDate,modificationDate: modificationDate,name: name,parentId: parentId,type: type);
-
+  @override
+  bool operator ==(o)=>o is Note && o.id == this.id;
+  @override
+  int get hashCode=>this.hashCode;
 }
 
 enum NoteType { Note, CheckList,Folder }

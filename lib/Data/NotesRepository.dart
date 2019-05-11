@@ -38,7 +38,11 @@ class NotesRepository{
     await db.delete("Note",where:"id = ?",whereArgs:[note.id]);
     if(refreshFunc.isNotEmpty)refreshFunc.last();
   }
+  Future changeParents(List<int> ids,int parentId) async{
+    var db = await _notesDb.getDb();
+    await db.update("Note",{"parent_id":parentId},where: "id IN(${ids.map((i)=>"?").toList().join(",")})",whereArgs: ids);
 
+  }
   Future changeParentThenRemoveNotes(Note note)async{
     var db = await _notesDb.getDb();
     await db.transaction((t)async{

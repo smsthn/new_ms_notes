@@ -1,4 +1,4 @@
-/*
+
 import 'dart:async';
 
 import 'package:async/async.dart';
@@ -10,6 +10,8 @@ import 'package:new_ms_notes/Data/Entities/Note.dart';
 import 'package:new_ms_notes/Data/NotesRepository.dart';
 
 class SearchNotesView extends StatefulWidget {
+  final Function(Note note) openNoteFunc;
+  SearchNotesView(this.openNoteFunc);
   @override
   State<StatefulWidget> createState() => SearchNotesState();
 }
@@ -58,13 +60,13 @@ class SearchNotesState extends State<SearchNotesView> {
               ];
             },
             body:
-            */
+            
 /*GestureDetector(
             onTap:(){ Navigator.push(context, MaterialPageRoute(builder: (context)=>NoteTopView()));},
             child:*//*
 
             */
-/* WillPopScope(child:*//*
+ WillPopScope(child:
  Stack(
                 children: <Widget>[
                   _notes != null && _notes.isNotEmpty? GridView.builder(
@@ -83,8 +85,8 @@ class SearchNotesState extends State<SearchNotesView> {
                 : CircularProgressIndicator()
 
         ],
-      ) */
-/*, onWillPop: _refresh)*//*
+      )
+, onWillPop: ()async=>true)
 
       ),
 
@@ -181,9 +183,9 @@ class SearchNotesState extends State<SearchNotesView> {
 
   Widget _buildOneItem(Note note) {
     return GestureDetector(
-      onTap: () async {
-        Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (b) => NoteTopView(note: note,)));
+      onTap: ()async {
+        Navigator.of(context).pop();
+        widget.openNoteFunc(note);
       },
       child: _getCardView(note),
     );
@@ -191,10 +193,6 @@ class SearchNotesState extends State<SearchNotesView> {
 
   Widget _getCardView(Note note) {
     switch (note.type) {
-    */
-/*case NoteType.Category:
-        return Container(height: 30,child: CategoryCardView(note),);*//*
-
       case NoteType.CheckList:
         return CheckListCardView(note);
       case NoteType.Folder:
@@ -215,4 +213,4 @@ class SearchNotesState extends State<SearchNotesView> {
       });
     });
   }
-}*/
+}

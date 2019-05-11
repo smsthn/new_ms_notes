@@ -9,7 +9,8 @@ class ExpandableFab extends StatefulWidget {
   bool isRoot;
   final Note note;
   final Function(Note note) refreshPage;
-    ExpandableFab({this.note,this.refreshPage}){
+  final Function deleteGoBack;
+    ExpandableFab({this.note,this.refreshPage,this.deleteGoBack}){
       isRoot = this.note == null || this.note.id == 0;
     }
   @override
@@ -107,18 +108,18 @@ class ExpandableFabState extends State<ExpandableFab>
           RaisedButton(
           child: Text("Delete!",style: TextStyle(color: Colors.red),),
             onPressed: () async{
-
-            Navigator.pop(context);
-            Navigator.pop(context,true);
             await NotesRepository().changeParentThenRemoveNotes(note);
+            Navigator.pop(context);
+            widget.deleteGoBack();
+            
             },
       ),
           RaisedButton(child: Text("Delete note with children!!",style: TextStyle(color: Colors.red[900]),),
             onPressed: ()async{
-
+               await NotesRepository().removeNote(note);
               Navigator.pop(context);
-              Navigator.pop(context,true);
-              await NotesRepository().removeNote(note);
+              widget.deleteGoBack();
+             
             },
           ),
           RaisedButton(child: Text("Cancel"),onPressed: (){Navigator.pop(context);},)

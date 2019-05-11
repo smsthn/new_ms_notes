@@ -12,7 +12,8 @@ class ExpandableFab2 extends StatefulWidget {
 
   final Note note;
   final Function(Note note) refreshPage;
-  ExpandableFab2({this.note,this.refreshPage});
+  final Function(Note note) openNoteFunction;
+  ExpandableFab2({this.note,this.refreshPage,this.openNoteFunction});
   @override
   State<StatefulWidget> createState() => ExpandableFab2State(note??Note(id: 0),refreshPage: refreshPage);
 }
@@ -49,7 +50,7 @@ class ExpandableFab2State extends State<ExpandableFab2>
           children: <Widget>[
             Align(
               child: FloatingActionButton(backgroundColor: getDarkColor(note?.colorIndex??16),foregroundColor: getTextColor(note?.colorIndex??16),
-                  elevation: 20, heroTag: "searchBtn",child: Icon(Icons.search,),onPressed: (){Navigator.push(context, MaterialPageRoute(builder: (c){}/*=>SearchNotesView()*/));}),
+                  elevation: 20, heroTag: "searchBtn",child: Icon(Icons.search,),onPressed: (){Navigator.push(context, MaterialPageRoute(builder: (c)=>SearchNotesView(widget.openNoteFunction)));}),
               alignment: AlignmentDirectional.center,
             ),
             Align(

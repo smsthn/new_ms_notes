@@ -61,13 +61,13 @@ class TopState extends State<Top> {
     return WillPopScope(
         child: _rootNote == null || _rootNote.id == 0
             ? Stack(
-                children: <Widget>[_getGrid(_children),_getBtns() ],
+                children: <Widget>[Container(color: getTransparentColor(_rootNote?.colorIndex??16),),_getGrid(_children),_getBtns() ],
               )
             : _getTop(),
         onWillPop:_prevNotesStack.isEmpty?()async=>true:notePopFunc);
   }
   Future<bool> notePopFunc(){
-
+      
       _rootNote = _prevNotesStack.removeLast();
       _getBtns();
       setState(() {
@@ -134,23 +134,30 @@ class TopState extends State<Top> {
           ];
         },
         body: Stack(
-          children: <Widget>[_getGrid(_children), _getBtns() ],
+          children: <Widget>[Container(color: getTransparentColor(_rootNote?.colorIndex??16),),_getGrid(_children), _getBtns() ],
         ));
   }
 
   Widget _getBtns() {
     return _isMovingMode
-        ? Btns().getmoveBtns(_moveFunc, _cancelMoving, false)
+        ? Align(alignment: AlignmentDirectional.bottomStart,child: Container(height: 100,child: Row(children: <Widget>[Btns().getmoveBtns(_moveFunc, _cancelMoving, false,null),_getSelectedListView()],)))
         : _isSelectionMode
-            ? Btns().getmoveBtns(_startMovingFunc, _cancelSelection, true)
-            : Btns().getExpandables(_rootNote, _refreshFunc);
+            ? Align(alignment: AlignmentDirectional.bottomStart,child: Container(height: 150,child: Row(children: <Widget>[Btns().getmoveBtns(_startMovingFunc, _cancelSelection, true,_deleteAll),_getSelectedListView()],),))
+            : Btns().getExpandables(_rootNote, _refreshFunc,notePopFunc,tapNoteBtn);
   }
 
   void _refreshFunc(Note note) {if(note == null){getNotes();return;}tapNoteBtn(note);}
-  void _startMovingFunc() {}
-  void _cancelSelection() {}
-  void _moveFunc() {}
-  void _cancelMoving() {}
+  void _startMovingFunc() {_isMovingMode = true;_isSelectionMode = false;setState(() {});}
+  void _cancelSelection() {_children.addAll(_selectedNotes);_selectedNotes.clear();_isMovingMode = false;_isSelectionMode = false;setState(() {});}
+  void _moveFunc() async{
+    
+    await NotesRepository().changeParents(_selectedNotes.map((n)=>n.id).toList(), _rootNote.id);
+    _selectedNotes.clear();
+    _isMovingMode = false;_isSelectionMode = false;getNotes();
+  }
+  void _cancelMoving() {_selectedNotes.clear();_isMovingMode = false;_isSelectionMode = false;setState(() {});}
+
+
   Widget _getGrid(List<Note> notes) {
     return GridView.builder(
         itemCount: notes == null ? 0 : notes.length,
@@ -167,14 +174,29 @@ class TopState extends State<Top> {
   Widget _buildOneItem(Note note) {
     return GestureDetector(
       onTap: () {
+        if(_isSelectionMode){
+          _selectedNotes.add(note);
+        _children.remove(note);
+        setState((){});
+        return;
+        }
         tapNoteBtn(note);
+      },
+      onLongPress: (){
+        _selectedNotes.add(note);
+        _children.remove(note);
+        _isSelectionMode = true;
+        setState((){});
+      },
+      onLongPressUp: (){
+        if(_children.contains(note))_children.remove(note);
       },
       child: _getCardView(note),
     );
   }
 
   void tapNoteBtn(Note note) {
-
+    if(note == _rootNote)return;
     if (!_prevNotesStack.contains(note)) {
       _prevNotesStack.addLast(_rootNote.clone());
     }
@@ -195,6 +217,25 @@ class TopState extends State<Top> {
       default:
         return NoteCardView(note);
     }
+  }
+
+  Widget _getSelectedListView(){
+    return _selectedNotes.isEmpty?SizedBox(height: 0,width: 0,)
+    : Expanded(child: ListView(
+      scrollDirection: Axis.horizontal,
+      children: _selectedNotes.map((n)=>_buildOneSelectedNote(n)).toList(),
+    ),);
+  }
+  Widget _buildOneSelectedNote(Note note){
+    return GestureDetector(
+      onTap: (){_children.add(note);_selectedNotes.remove(note);
+      if(_isSelectionMode)_isSelectionMode = _selectedNotes.isNotEmpty;
+      if(_isMovingMode)_isMovingMode = _selectedNotes.isNotEmpty;
+      setState((){});},
+      child: Padding(padding: EdgeInsets.symmetric(horizontal: 3,vertical: 25),child: Container(color: getPrimColor(note.colorIndex),constraints: BoxConstraints.tightFor(height: 40),
+      width: 100,height: 40,child:Text(note.name,overflow: TextOverflow.ellipsis,textAlign: TextAlign.center,style: TextStyle(color: getTextColor(note.colorIndex)),),
+    ),),
+    );
   }
 
   List<Widget> _getCheckables(String content) {
@@ -270,7 +311,48 @@ class TopState extends State<Top> {
         NotesRepository().getNotesWhereParent(_rootNote?.id ?? 0));
     _cancellableOperation.value.then((nl) {
       _children = nl as List<Note>;
+      if(_selectedNotes.isNotEmpty)_children.removeWhere((n)=>_selectedNotes.contains(n));
       setState(() {});
     });
+  }
+
+  void _deleteAll(){
+    showDialog(context: context,
+    builder: (bc){
+      return AlertDialog(
+        title: Text("Delete Confirmation"),
+        content: Text("Are you sure you want to delete this note ?"),
+        actions: <Widget>[
+          RaisedButton(
+          child: Text("Delete!",style: TextStyle(color: Colors.red),),
+            onPressed: () async{
+            for(var note in _selectedNotes){
+              await NotesRepository().changeParentThenRemoveNotes(note);
+            }
+            _selectedNotes.clear();
+            Navigator.pop(context);
+            _isSelectionMode = false;
+            _isMovingMode = false;
+            getNotes();
+            },
+      ),
+          RaisedButton(child: Text("Delete note with children!!",style: TextStyle(color: Colors.red[900]),),
+            onPressed: ()async{
+               for(var note in _selectedNotes){
+                 await NotesRepository().removeNote(note);
+               }
+               _selectedNotes.clear();
+               _isSelectionMode = false;
+              _isMovingMode = false;
+              Navigator.pop(context);
+              
+             getNotes();
+            },
+          ),
+          RaisedButton(child: Text("Cancel"),onPressed: (){Navigator.pop(context);},)
+        ],
+      );
+    }
+    );
   }
 }
