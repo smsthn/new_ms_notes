@@ -1,0 +1,276 @@
+import 'dart:collection';
+
+import 'package:async/async.dart';
+import 'package:firebase_admob/firebase_admob.dart';
+import 'package:flutter/material.dart';
+import 'package:new_ms_notes/Data/Entities/Note.dart';
+import 'package:new_ms_notes/Data/NotesRepository.dart';
+import 'package:new_ms_notes/Helpers/ColorHelper.dart';
+import 'package:new_ms_notes/Views/Btns/BtnsClass.dart';
+import 'package:new_ms_notes/Views/Cards/CheckListCardView.dart';
+import 'package:new_ms_notes/Views/Cards/FolderCardView.dart';
+import 'package:new_ms_notes/Views/Cards/NoteCardView.dart';
+
+class Top extends StatefulWidget {
+  TopState _stt;
+
+  @override
+  State<StatefulWidget> createState() {
+    _stt = TopState();
+    return _stt;
+  }
+}
+
+class TopState extends State<Top> {
+  Note _rootNote;
+  bool _isSelectionMode;
+  bool _isMovingMode;
+  List<Note> _children;
+  List<Note> _selectedNotes;
+  List<String> _checkList;
+  List<bool> _checkListBools;
+  Queue<Note> _prevNotesStack;
+  static BannerAd _bannerAd;
+  CancelableOperation _cancellableOperation;
+  Stack _btns;
+  TopState() {
+    _rootNote = Note(id: 0);
+    _isSelectionMode = false;
+    _isMovingMode = false;
+    _children = List();
+    _selectedNotes = List();
+    _checkList = List();
+    _checkListBools = List();
+    _prevNotesStack = Queue();
+  }
+  @override
+  void initState() {
+    // FirebaseAdMob.instance.initialize(appId: BannerAd.testAdUnitId);
+    // _bannerAd =
+    //     BannerAd(adUnitId: BannerAd.testAdUnitId, size: AdSize.smartBanner);
+    // _bannerAd
+    //   ..load()
+    //   ..show(anchorType: AnchorType.top);
+      
+    getNotes();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+        child: _rootNote == null || _rootNote.id == 0
+            ? Stack(
+                children: <Widget>[_getGrid(_children),_getBtns() ],
+              )
+            : _getTop(),
+        onWillPop:_prevNotesStack.isEmpty?()async=>true:notePopFunc);
+  }
+  Future<bool> notePopFunc(){
+
+      _rootNote = _prevNotesStack.removeLast();
+      _getBtns();
+      setState(() {
+
+      });
+      getNotes();
+
+  }
+  Widget _getTop() {
+    return NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              backgroundColor:
+                  getDarkColor(_rootNote == null ? 0 : _rootNote.colorIndex),
+              centerTitle: true,
+              title: Hero(
+                  tag: "${_rootNote.id}_title",
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Text(
+                      _rootNote.name,
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                    ),
+                  )),
+              pinned: true,
+            ),
+            SliverToBoxAdapter(
+                child: _rootNote.type != NoteType.Folder
+                    ? Container(
+                        color: _rootNote.colorIndex != 16
+                            ? getPrimColor(
+                                _rootNote == null ? 0 : _rootNote.colorIndex)
+                            : getLightColor(16),
+                        child: Hero(
+                          tag: "${_rootNote.id}_content",
+                          child: Material(
+                              color: Colors.transparent,
+                              child: _rootNote.type == NoteType.CheckList
+                                  ? Wrap(
+                                      direction: Axis.horizontal,
+                                      children:
+                                          _getCheckables(_rootNote.content),
+                                    )
+                                  : Padding(
+                                      padding: EdgeInsets.all(10),
+                                      child: Text(
+                                        _rootNote.content,
+                                        textAlign: TextAlign.start,
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            color: getTextColor(
+                                                _rootNote.colorIndex)),
+                                      ),
+                                    )),
+                        ),
+                      )
+                    : SizedBox(
+                        height: 0,
+                      )),
+          ];
+        },
+        body: Stack(
+          children: <Widget>[_getGrid(_children), _getBtns() ],
+        ));
+  }
+
+  Widget _getBtns() {
+    return _isMovingMode
+        ? Btns().getmoveBtns(_moveFunc, _cancelMoving, false)
+        : _isSelectionMode
+            ? Btns().getmoveBtns(_startMovingFunc, _cancelSelection, true)
+            : Btns().getExpandables(_rootNote, _refreshFunc);
+  }
+
+  void _refreshFunc(Note note) {if(note == null){getNotes();return;}tapNoteBtn(note);}
+  void _startMovingFunc() {}
+  void _cancelSelection() {}
+  void _moveFunc() {}
+  void _cancelMoving() {}
+  Widget _getGrid(List<Note> notes) {
+    return GridView.builder(
+        itemCount: notes == null ? 0 : notes.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount:
+                MediaQuery.of(context).size.shortestSide < 600 ? 2 : 3,
+            crossAxisSpacing: 4,
+            mainAxisSpacing: 4),
+        itemBuilder: (BuildContext context, int index) {
+          return _buildOneItem(notes[index]);
+        });
+  }
+
+  Widget _buildOneItem(Note note) {
+    return GestureDetector(
+      onTap: () {
+        tapNoteBtn(note);
+      },
+      child: _getCardView(note),
+    );
+  }
+
+  void tapNoteBtn(Note note) {
+
+    if (!_prevNotesStack.contains(note)) {
+      _prevNotesStack.addLast(_rootNote.clone());
+    }
+    _rootNote = note;
+    _getBtns();
+
+    getNotes();
+  }
+
+  Widget _getCardView(Note note) {
+    switch (note.type) {
+      /*case NoteType.Category:
+        return Container(height: 30,child: CategoryCardView(note),);*/
+      case NoteType.CheckList:
+        return CheckListCardView(note);
+      case NoteType.Folder:
+        return FolderCardView(note);
+      default:
+        return NoteCardView(note);
+    }
+  }
+
+  List<Widget> _getCheckables(String content) {
+    _getCheckList();
+    List<Widget> wdg = List.generate(_checkList.length, (i) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            child: Checkbox(
+              activeColor: getTextColor(_rootNote?.colorIndex ?? 0),
+              onChanged: (b) {
+                changeCheck(i, b);
+              },
+              value: _checkListBools[i],
+            ),
+          ),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Text(
+              _checkList[i],
+              style: TextStyle(
+                  color: getTextColor(_rootNote.colorIndex),
+                  decoration: _checkListBools[i]
+                      ? TextDecoration.lineThrough
+                      : TextDecoration.none),
+            ),
+          ),
+        ],
+      );
+    });
+    return wdg;
+  }
+
+  void _getCheckList() {
+    if (_rootNote != null && _rootNote.type == NoteType.CheckList) {
+      _checkList = List();
+      _checkListBools = List();
+      if (_rootNote != null &&
+          _rootNote.type == NoteType.CheckList &&
+          _rootNote.content != null) {
+        _checkList.clear();
+        var ctn = _rootNote.content.split("\n");
+        ctn.removeWhere((s) => s.trim() == "");
+        _checkList.addAll(ctn);
+        _checkListBools.clear();
+        var i = 0;
+        _checkList.forEach((item) {
+          _checkListBools.add(item[0] == '1');
+          _checkList[i] = item.length == 1 ? '' : item.substring(1);
+          i++;
+        });
+      }
+    }
+  }
+
+  void changeCheck(int index, bool value) {
+    _checkListBools[index] = value;
+    setState(() {});
+    var str = StringBuffer('');
+    for (int i = 0; i < _checkList.length; i++) {
+      str.write(_checkListBools[i] ? '1' : '0');
+      str.write(_checkList[i]);
+      str.write('\n');
+    }
+    _rootNote.content = str.toString();
+    NotesRepository().updateNote(_rootNote);
+  }
+
+  Future getNotes() {
+    _cancellableOperation?.cancel();
+    _cancellableOperation = CancelableOperation.fromFuture(
+        NotesRepository().getNotesWhereParent(_rootNote?.id ?? 0));
+    _cancellableOperation.value.then((nl) {
+      _children = nl as List<Note>;
+      setState(() {});
+    });
+  }
+}
