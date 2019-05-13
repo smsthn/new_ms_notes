@@ -40,7 +40,9 @@ class SearchNotesState extends State<SearchNotesView> {
         Container(
         height: 60,
       ),
-      Expanded(child: WillPopScope(
+      Expanded(child: WillPopScope(onWillPop: ()async{//TODO: there was something to be done here
+        return true;
+      },
         child: NestedScrollView(
             headerSliverBuilder:
                 (BuildContext context, bool innerBoxIsScrolled) {
@@ -61,11 +63,6 @@ class SearchNotesState extends State<SearchNotesView> {
             },
             body:
             
-/*GestureDetector(
-            onTap:(){ Navigator.push(context, MaterialPageRoute(builder: (context)=>NoteTopView()));},
-            child:*//*
-
-            */
  WillPopScope(child:
  Stack(
                 children: <Widget>[
