@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:async/async.dart';
 import 'package:firebase_admob/firebase_admob.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:new_ms_notes/Data/Entities/Note.dart';
 import 'package:new_ms_notes/Data/NotesRepository.dart';
@@ -34,7 +35,11 @@ class TopState extends State<Top> {
   Queue<Note> _prevNotesStack;
   static BannerAd _bannerAd;
   CancelableOperation _cancellableOperation;
+  bool _hideBtns;
+  GlobalKey _topKey;
   Stack _btns;
+  ScrollController _scrollController;
+
   TopState() {
     _rootNote = Note(id: 0);
     _isSelectionMode = false;
@@ -44,6 +49,7 @@ class TopState extends State<Top> {
     _checkList = List();
     _checkListBools = List();
     _prevNotesStack = Queue();
+    
   }
   @override
   void initState() {
@@ -53,11 +59,27 @@ class TopState extends State<Top> {
     // _bannerAd
     //   ..load()
     //   ..show(anchorType: AnchorType.top);
-      
+      _hideBtns = false;
     getNotes();
+    _topKey = GlobalKey();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
     super.initState();
   }
-
+  void _scrollListener(){
+    if (_scrollController.offset <= _scrollController.position.minScrollExtent &&
+        !_scrollController.position.outOfRange) {
+      setState(() {
+        _hideBtns = false;
+      });
+    } else {
+      if(!_hideBtns){
+        setState(() {
+        _hideBtns = true;
+      });
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -65,8 +87,20 @@ class TopState extends State<Top> {
             ? Stack(
                 children: <Widget>[Container(color: getTransparentColor(_rootNote?.colorIndex??16),),_getGrid(_children),_getBtns() ],
               )
-            : _getTop(),
+            : Stack(children: <Widget>[GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: (){
+                _hideBtns = false;setState((){});},
+              
+              child: _getTop(),
+            ),
+            if(!_hideBtns || !_longEnough())_getBtns()],),
         onWillPop:_prevNotesStack.isEmpty?()async=>true:notePopFunc);
+  }
+  bool  _longEnough(){
+    var le =  ((_topKey?.currentContext?.findRenderObject()as RenderBox)?.size?.height??0) >=( MediaQuery.of(this.context).size.height - 60);
+    return le;
+
   }
   Future<bool> notePopFunc(){
       
@@ -79,7 +113,8 @@ class TopState extends State<Top> {
 
   }
   Widget _getTop() {
-    return NestedScrollView(
+    int top = 0;
+    var nsc =  NestedScrollView(key: _topKey,controller: _scrollController,
         headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
           return <Widget>[
             SliverAppBar(
@@ -111,7 +146,7 @@ class TopState extends State<Top> {
                           FutureBuilder(future: ImageHelper.getNotePhotos(_rootNote),
                             builder: (c,snap){
                               if(snap.hasData && snap.data is List<File> && (snap.data as List<File>).length != 0){
-                                return Container(width: MediaQuery.of(context).size.width,height: MediaQuery.of(context).size.height - 60,child: _getPics(snap.data as List<File>),);
+                                return Container(width: MediaQuery.of(context).size.width,height: MediaQuery.of(context).size.height -(MediaQuery.of(context).size.height / 10) ,child: _getPics(snap.data as List<File>),);
                               } else{
                                 return SizedBox(height: 0,width: 0,);
                               }
@@ -144,12 +179,14 @@ class TopState extends State<Top> {
                       )
                     : SizedBox(
                         height: 0,
-                      )),
+                      ))
           ];
         },
         body: Stack(
-          children: <Widget>[Container(color: getTransparentColor(_rootNote?.colorIndex??16),),_getGrid(_children), _getBtns() ],
+          children: <Widget>[Container(color: getTransparentColor(_rootNote?.colorIndex??16),),_getGrid(_children) ],
         ));
+        
+        return nsc;
   }
 
   Widget _getBtns() {

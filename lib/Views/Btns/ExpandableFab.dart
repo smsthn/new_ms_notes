@@ -21,9 +21,9 @@ class ExpandableFabState extends State<ExpandableFab>
     with SingleTickerProviderStateMixin {
   Note note;
   ExpandableFabState(this.note,this.refreshPage);
-  double _dem = 200.0;
+  double _dem = 50.0;
   final Function(Note note) refreshPage;
-  Icon _icon = Icon(Icons.expand_more);
+  Icon _icon = Icon(Icons.expand_less);
 
 
 

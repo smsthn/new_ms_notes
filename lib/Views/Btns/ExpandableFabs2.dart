@@ -23,9 +23,9 @@ class ExpandableFab2State extends State<ExpandableFab2>
   Note note;
   final Function(Note note) refreshPage;
   ExpandableFab2State(this.note,{this.refreshPage});
-  double _dem = 200.0;
+  double _dem = 50.0;
 
-  Icon _icon = Icon(Icons.expand_more);
+  Icon _icon = Icon(Icons.expand_less);
   @override
   void initState() {
     
