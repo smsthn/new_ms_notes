@@ -255,9 +255,5 @@ packages:
     source: hosted
     version: "3.4.1"
 sdks:
-<<<<<<< HEAD
-  dart: ">=2.2.0 <3.0.0"
-=======
   dart: ">=2.2.2 <3.0.0"
->>>>>>> add_images_and_audio
   flutter: ">=1.2.1 <2.0.0"
