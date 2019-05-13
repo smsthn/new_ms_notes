@@ -34,7 +34,7 @@ class ExpandableFab2State extends State<ExpandableFab2>
 
   @override
   Widget build(BuildContext context) {
-    var fab = FloatingActionButton(onPressed: open,);
+    
     return GestureDetector(
       /*onPanStart:(d){open();} ,*/
       /*onVerticalDragStart:(d){c = Colors.green;},*/

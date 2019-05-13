@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:io';
 
 import 'package:async/async.dart';
 import 'package:firebase_admob/firebase_admob.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:new_ms_notes/Data/Entities/Note.dart';
 import 'package:new_ms_notes/Data/NotesRepository.dart';
 import 'package:new_ms_notes/Helpers/ColorHelper.dart';
+import 'package:new_ms_notes/Helpers/ImageHelper.dart';
 import 'package:new_ms_notes/Views/Btns/BtnsClass.dart';
 import 'package:new_ms_notes/Views/Cards/CheckListCardView.dart';
 import 'package:new_ms_notes/Views/Cards/FolderCardView.dart';
@@ -105,7 +107,18 @@ class TopState extends State<Top> {
                             ? getPrimColor(
                                 _rootNote == null ? 0 : _rootNote.colorIndex)
                             : getLightColor(16),
-                        child: Hero(
+                        child: Column(children: <Widget>[
+                          FutureBuilder(future: ImageHelper.getNotePhotos(_rootNote),
+                            builder: (c,snap){
+                              if(snap.hasData && snap.data is List<File> && (snap.data as List<File>).length != 0){
+                                return Container(width: MediaQuery.of(context).size.width,height: MediaQuery.of(context).size.height - 60,child: _getPics(snap.data as List<File>),);
+                              } else{
+                                return SizedBox(height: 0,width: 0,);
+                              }
+                            },
+                          )
+                          ,
+                          Hero(
                           tag: "${_rootNote.id}_content",
                           child: Material(
                               color: Colors.transparent,
@@ -126,7 +139,8 @@ class TopState extends State<Top> {
                                                 _rootNote.colorIndex)),
                                       ),
                                     )),
-                        ),
+                        )
+                        ],),
                       )
                     : SizedBox(
                         height: 0,
@@ -354,5 +368,13 @@ class TopState extends State<Top> {
       );
     }
     );
+  }
+
+  Widget _getPics(List<File> images) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      children: images.map((f){
+        return Image.file(f);
+      }).toList(),);
   }
 }

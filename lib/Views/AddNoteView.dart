@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:new_ms_notes/Data/Entities/Note.dart';
 import 'package:new_ms_notes/Data/NotesRepository.dart';
 import 'package:new_ms_notes/Helpers/ColorHelper.dart';
+import 'package:new_ms_notes/Helpers/ImageHelper.dart';
+import 'package:path/path.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
 
 class AddNoteView extends StatefulWidget {
   final Note note;
@@ -22,6 +27,7 @@ class AddNoteState extends State<AddNoteView> {
   List<String> checkList;
   List<bool> checkListBools;
   List<FocusNode> _focusNodes;
+  AddImageHandler _addImageHandler;
 
   bool isOpenForEdit = false;
 
@@ -64,6 +70,16 @@ class AddNoteState extends State<AddNoteView> {
     super.initState();
   }
 
+  Widget _getTop(Widget top, Widget body) {
+    return NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverToBoxAdapter(child: top),
+          ];
+        },
+        body: body);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,148 +95,294 @@ class AddNoteState extends State<AddNoteView> {
                 padding:
                     EdgeInsets.only(top: 50, left: 10, right: 10, bottom: 5),
                 color: _color,
-                child: Column(
-                  children: <Widget>[
-                    Container(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.max,
-                        children: <Widget>[
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Text("Type:"),
-                          ),
-                          Expanded(
-                            child: Flex(
-                              direction: Axis.horizontal,
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: <Widget>[
-                                ChoiceChip(
-                                  label: Text("Note"),
-                                  backgroundColor: Colors.white,
-                                  selected: note.type == NoteType.Note,
-                                  onSelected: (b) {
-                                    if (b) _switchType(NoteType.Note);
-                                  },
-                                ),
-                                ChoiceChip(
-                                    label: Text("Check List"),
-                                    backgroundColor: Colors.white,
-                                    selected: note.type == NoteType.CheckList,
-                                    onSelected: (b) {
-                                      if (b) _switchType(NoteType.CheckList);
-                                    }),
-                              ],
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                    Divider(),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 70,
-                      child: ListView(
-                        children: _colors
-                            .map((c) => GestureDetector(
-                                onTap: () {
-                                  changeNoteColor(c);
-                                },
-                                child: Container(
-                                  margin: EdgeInsets.only(right: 7, bottom: 1),
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                      color: c, shape: BoxShape.circle),
-                                  child: Text(""),
-                                )))
-                            .toList(),
-                        scrollDirection: Axis.horizontal,
-                      ),
-                    ),
-                    //Title
-                    Container(
-                      margin: EdgeInsets.symmetric(vertical: 15),
-                      width: double.infinity,
-                      color:
-                          getDarkColor(note?.colorIndex ?? 0) ?? Colors.black,
-                      child: Hero(
-                        tag: "${note.id}_title",
-                        child: EditableText(
-                            controller:
-                                TextEditingController(text: note?.name ?? "")
-                                  ..selection = TextSelection.collapsed(
-                                      offset: note.name.length),
-                            focusNode: FocusNode(),
-                            onChanged: (s) {
-                              note?.name = s;
-                              note?.modificationDate = DateTime.now();
-                            },
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white, fontSize: 42),
-                            cursorColor: Colors.black,
-                            backgroundCursorColor: Colors.black),
-                      ),
-                    ),
-                    //Content
+                child: _getTop(
+                    Column(
+                      children: <Widget>[
+                        _chooseTypeWidget(),
+                        Divider(),
+                        _additionsWidget(),
+                        Divider(),
+                        _chooseColorWidget(),
+                        Divider(),
+                        _photosWidget(),
+                        //Title
 
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          _focusNodes.isNotEmpty
-                              ? FocusScope.of(context)
-                                  .requestFocus(_focusNodes.last)
-                              : {};
-                        },
-                        child: _buildNoteContent(note.type),
-                      ),
-                    )
-                  ],
-                )),
+                        //Content
+                      ],
+                    ),
+                    Column(
+                      children: <Widget>[
+                        _titleWidget(),
+                        _contentWidget(),
+                      ],
+                    ))),
             onWillPop: () async {
-              if (note.type == NoteType.CheckList) {
-                note.content = '';
-                var i = 0;
-                checkList.forEach((s) {
-                  if (s.trim().isNotEmpty) {
-                    note.content +=
-                        (checkListBools[i++] ? "1" : "0") + s + "\n";
-                  }
-                });
-              }
               // if(!isOpenForEdit)
-              if (isOpenForEdit || note.name.isNotEmpty || note.content.isNotEmpty) {
+              if (isOpenForEdit ||
+                  note.name.isNotEmpty ||
+                  note.content.isNotEmpty) {
+                print("WILL SAVE");
                 if (note.type == NoteType.CheckList) {
                   note.content = '';
                   var i = 0;
                   checkList.forEach((s) {
                     if (s.trim().isNotEmpty) {
-                      note.content += (checkListBools[i++] ? "1" : "0") + s + "\n";
+                      note.content +=
+                          (checkListBools[i++] ? "1" : "0") + s + "\n";
                     }
                   });
-                  checkList.clear();
-                  checkListBools.clear();
                 }
-                if (isOpenForEdit)
-                   {
-                     NotesRepository().updateNote(note);
-                     Navigator.of(context).pop(note);
-                    return false;
-                   }
-                else
-                  {await NotesRepository().addNote(note);return true;}
+                if (isOpenForEdit) {
+                  print("EDITING");
+                  NotesRepository().updateNote(note);
+                  Navigator.of(context).pop(note);
+                  _addImageHandler.saveImages(note.id);
+                  return false;
+                } else {
+                  print("ADDING");
+                  var nt = await NotesRepository().addNote(note);
+                  _addImageHandler.saveImages(nt.id);
+                  return true;
+                }
+              } else {
+                print("WONT SAVE");
+                return true;
               }
-              
             }),
       )
     ]));
   }
+
+  Widget _photosWidget() {
+    if (_addImageHandler == null)
+      _addImageHandler =
+          new AddImageHandler(MediaQuery.of(this.context).size.width.toInt());
+    return FutureBuilder(
+      future: _addImageHandler.getImages(noteId: note?.id ?? 0),
+      builder: (c, snap) {
+        if (snap.hasData) {
+          return Container(
+            width: MediaQuery.of(c).size.width,
+            height: MediaQuery.of(c).size.height / 4,
+            child: ListView(
+              children: (snap.data as List<File>)
+                  .map((f) => GestureDetector(
+                        onTap: () {
+                          Navigator.of(c).push(MaterialPageRoute(
+                              builder: (c) => _previewImageWidget(f)));
+                        },
+                        child: Container(
+                          padding: EdgeInsets.all(1),
+                          child: Image.file(f),
+                        ),
+                      ))
+                  .toList(),
+              scrollDirection: Axis.horizontal,
+            ),
+          );
+        } else {
+          return SizedBox(
+            height: 0,
+            width: 0,
+          );
+        }
+      },
+    );
+  }
+
+  Widget _previewImageWidget(File f) {
+    return Scaffold(
+      appBar: AppBar(
+        actions: <Widget>[
+          FlatButton(
+            child: Text("Delete"),
+            onPressed: (){_deletePhoto(file: f);},
+          ),
+          FlatButton(
+            child: Text("Save To Gallery"),
+            onPressed: () {
+              _savePhoto(f);
+            },
+          ),
+        ],
+      ),
+      body: Image.file(_addImageHandler.images
+          .firstWhere((i) => basename(i.path) == basename(f.path))),
+    );
+  }
+
+  void _deletePhoto({int index, File file})async {
+    if (file != null) {
+      await _addImageHandler.removeImage(file: file);
+    } else if (index != null) {
+      await _addImageHandler.removeImage(index: index);
+    }
+    Navigator.of(this.context).pop(true);
+    setState(() {});
+  }
+
+  void _savePhoto(File imgFile) async {
+    final result = await ImageGallerySaver.save(imgFile.readAsBytesSync());
+    if (result as bool) {
+      Scaffold.of(this.context).showSnackBar(SnackBar(
+        content: Text("Photo added successfully"),
+      ));
+    } else {
+      Scaffold.of(this.context).showSnackBar(SnackBar(
+        content: Text("Photo added successfully"),
+      ));
+    }
+  }
+
+  Widget _contentWidget() {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          _focusNodes.isNotEmpty
+              ? FocusScope.of(this.context).requestFocus(_focusNodes.last)
+              : {};
+        },
+        child: _buildNoteContent(note.type),
+      ),
+    );
+  }
+
+  Widget _titleWidget() {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 15),
+      width: double.infinity,
+      color: getDarkColor(note?.colorIndex ?? 0) ?? Colors.black,
+      child: Hero(
+        tag: "${note.id}_title",
+        child: EditableText(
+            controller: TextEditingController(text: note?.name ?? "")
+              ..selection = TextSelection.collapsed(offset: note.name.length),
+            focusNode: FocusNode(),
+            onChanged: (s) {
+              note?.name = s;
+              note?.modificationDate = DateTime.now();
+            },
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 42),
+            cursorColor: Colors.black,
+            backgroundCursorColor: Colors.black),
+      ),
+    );
+  }
+
+  Widget _chooseColorWidget() {
+    return SizedBox(
+      width: double.infinity,
+      height: 70,
+      child: ListView(
+        children: _colors
+            .map((c) => GestureDetector(
+                onTap: () {
+                  changeNoteColor(c);
+                },
+                child: Container(
+                  margin: EdgeInsets.only(right: 7, bottom: 1),
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+                  child: Text(""),
+                )))
+            .toList(),
+        scrollDirection: Axis.horizontal,
+      ),
+    );
+  }
+
+  Widget _chooseTypeWidget() {
+    return Container(
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        children: <Widget>[
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text("Type:"),
+          ),
+          Expanded(
+            child: Flex(
+              direction: Axis.horizontal,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: <Widget>[
+                ChoiceChip(
+                  label: Text("Note"),
+                  backgroundColor: Colors.white,
+                  selected: note.type == NoteType.Note,
+                  onSelected: (b) {
+                    if (b) _switchType(NoteType.Note);
+                  },
+                ),
+                ChoiceChip(
+                    label: Text("Check List"),
+                    backgroundColor: Colors.white,
+                    selected: note.type == NoteType.CheckList,
+                    onSelected: (b) {
+                      if (b) _switchType(NoteType.CheckList);
+                    }),
+              ],
+            ),
+          ),
+          Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: PopupMenuButton(
+                itemBuilder: (c) => _buildMenuItems(),
+              ))
+        ],
+      ),
+    );
+  }
+
+  Widget _additionsWidget() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: <Widget>[
+        FloatingActionButton(
+          heroTag: "FknBtn",
+          child: Icon(Icons.image),
+          onPressed: _addImage,
+        ),
+        FloatingActionButton(
+          heroTag: "FknBtn2",
+          child: Icon(Icons.camera_alt),
+          onPressed: _takePhoto,
+        ),
+      ],
+    );
+  }
+
+  void _addImage() async {
+    await _addImageHandler.addImage(camera: false);
+    setState(() {});
+  }
+
+  void _takePhoto() async {
+    await _addImageHandler.addImage(camera: true);
+    setState(() {});
+  }
+
+  List<PopupMenuEntry<dynamic>> _buildMenuItems() {
+    return [
+      PopupMenuItem(
+        child: FlatButton(
+          child: Text("Discard"),
+          onPressed: () {},
+        ),
+      ),
+    ];
+  }
+  // PopupMenuEntry<dynamic> _buildOneItem(){
+
+  // }
 
   @override
   void dispose() {
     _focusNodes
       ..forEach((f) => dispose)
       ..clear();
-    
+
     super.dispose();
   }
 
@@ -237,7 +399,7 @@ class AddNoteState extends State<AddNoteView> {
   Widget _buildNoteContent(NoteType type) {
     switch (type) {
       case NoteType.CheckList:
-        return  _getRows(checkList, checkListBools );
+        return _getRows(checkList, checkListBools);
 
       default:
         return Hero(
@@ -286,7 +448,9 @@ class AddNoteState extends State<AddNoteView> {
   }
 
   Widget _getRows(List<String> st, List<bool> bols) {
-    return ListView(children: getChildren(st)/*,onReorder: (oldPos,newPos){
+    return ListView(
+      children: getChildren(
+              st) /*,onReorder: (oldPos,newPos){
       if (newPos > oldPos) {
         newPos -= 1;
       }
@@ -294,19 +458,22 @@ class AddNoteState extends State<AddNoteView> {
       var oldValBool =checkListBools.removeAt(oldPos);
       checkList.insert(newPos, oldVal);
       checkListBools.insert(newPos, oldValBool);
-    }*/,);
+    }*/
+          ,
+    );
   }
-  List<Widget> getChildren(List<String> st){
-    var lst =List<Widget>();
-    for(int i = 0; i < st.length; i++){
-      lst.add(Padding(key: Key(i.toString()+'AddEditViewCheckableList'),
+
+  List<Widget> getChildren(List<String> st) {
+    var lst = List<Widget>();
+    for (int i = 0; i < st.length; i++) {
+      lst.add(Padding(
+        key: Key(i.toString() + 'AddEditViewCheckableList'),
         padding: EdgeInsets.only(top: 15),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-
             Container(
               child: Checkbox(
                   value: checkListBools[i],
@@ -331,7 +498,8 @@ class AddNoteState extends State<AddNoteView> {
                       _focusNodes.insert(i + 1, f);
 
                       setState(() {
-                        FocusScope.of(context).requestFocus(_focusNodes[i + 1]);
+                        FocusScope.of(this.context)
+                            .requestFocus(_focusNodes[i + 1]);
                       });
                       return false;
                     }
@@ -362,7 +530,7 @@ class AddNoteState extends State<AddNoteView> {
                 },
                 controller: TextEditingController(text: checkList[i] ?? "")
                   ..selection =
-                  TextSelection.collapsed(offset: checkList[i].length),
+                      TextSelection.collapsed(offset: checkList[i].length),
                 focusNode: _focusNodes[i],
                 style: TextStyle(
                     color: getTextColor(note.colorIndex),
@@ -380,28 +548,34 @@ class AddNoteState extends State<AddNoteView> {
                     _focusNodes.insert(i + 1, f);
 
                     setState(() {
-                      FocusScope.of(context).requestFocus(_focusNodes[i + 1]);
+                      FocusScope.of(this.context)
+                          .requestFocus(_focusNodes[i + 1]);
                     });
                     return false;
                   }
                 },
               ),
             ),
-            i != checkList.length-1?FlatButton.icon(
-                onPressed: () {
-                  checkList.removeAt(i);
-                  checkListBools.removeAt(i);
-                  _focusNodes.removeAt(i);
-                  setState(() {});
-                },
-                icon: Icon(Icons.delete_forever),
-                label: Text("")):SizedBox(height: 0,)
+            i != checkList.length - 1
+                ? FlatButton.icon(
+                    onPressed: () {
+                      checkList.removeAt(i);
+                      checkListBools.removeAt(i);
+                      _focusNodes.removeAt(i);
+                      setState(() {});
+                    },
+                    icon: Icon(Icons.delete_forever),
+                    label: Text(""))
+                : SizedBox(
+                    height: 0,
+                  )
           ],
         ),
       ));
     }
     return lst;
   }
+
   /*Widget _getCheckListTile(int index){
     return CheckboxListTile(value: checkListBools[index], onChanged:(n) {
       checkListBools[index] = n;

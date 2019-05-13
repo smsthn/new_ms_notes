@@ -41,6 +41,14 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app accesses photo library in order to allow adding photos to your notes</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app accesses photo library in order to allow saving notes on disk</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app accesses camera in order to allow capturing and adding photos to your notes</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app accesses camera in order to record audio and add it to your notes</string>
 	<key>GADApplicationIdentifier</key>
         	<string>ca-app-pub-3940256099942544/6300978111</string>
 </dict>

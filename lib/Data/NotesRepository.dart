@@ -4,7 +4,9 @@
 import 'package:new_ms_notes/Data/Entities/Note.dart';
 import 'package:new_ms_notes/Data/Entities/Tag.dart';
 import 'package:new_ms_notes/Data/NotesDb.dart';
+import 'package:new_ms_notes/Helpers/ImageHelper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 class NotesRepository{
   NotesDb _notesDb;
@@ -36,7 +38,12 @@ class NotesRepository{
   Future removeNote(Note note)async{
     var db = await _notesDb.getDb();
     await db.delete("Note",where:"id = ?",whereArgs:[note.id]);
+    var ids = await _getNoteIds(db);
+    ImageHelper.deleteWhereNotIds(ids);
     if(refreshFunc.isNotEmpty)refreshFunc.last();
+  }
+  Future _getNoteIds(Database db)async{
+    return await db.query("Note",columns: ["id"],);
   }
   Future changeParents(List<int> ids,int parentId) async{
     var db = await _notesDb.getDb();
@@ -45,6 +52,7 @@ class NotesRepository{
   }
   Future changeParentThenRemoveNotes(Note note)async{
     var db = await _notesDb.getDb();
+    ImageHelper.deleteNotesImages(note);
     await db.transaction((t)async{
       await t.update("Note",{"parent_id":note.parentId},where: "parent_id = ?",whereArgs: [note.id]);
       await t.delete("Note",where:"id = ?",whereArgs:[note.id]);
