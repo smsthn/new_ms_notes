@@ -60,6 +60,7 @@ class ExpandableFab2State extends State<ExpandableFab2>
                   if((s)!= null){
                     refreshPage(note);
                   }
+                  refreshPage(null);
                 }),
                 alignment: Alignment(0.5, 1)
             ),

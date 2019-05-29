@@ -37,7 +37,7 @@ class MyHomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Top(),
+      body: SafeArea(child: Top(),),
     );
   }
 

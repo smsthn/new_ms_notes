@@ -151,7 +151,15 @@ class OneFab extends State<ExpandableFab>{
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(backgroundColor: getDarkColor(16),foregroundColor: getTextColor(16),heroTag: "AloneAddBtn",
-      elevation: 20,onPressed: (){Navigator.push(context, MaterialPageRoute(builder: (c)=>AddNoteView(parentId: null,)));},
+      elevation: 20,onPressed: ()async{
+                var s = await Navigator.push(context, MaterialPageRoute(builder: (c)=>AddNoteView(parentId: widget.note.id,)));
+                if((s as Note)!=null){
+
+                  widget.refreshPage(s);
+                } else {
+                  widget.refreshPage(null);
+                }
+              },
       child: Icon(Icons.add),
 
     );

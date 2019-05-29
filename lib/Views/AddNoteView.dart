@@ -282,6 +282,7 @@ class AddNoteState extends State<AddNoteView> {
         return Hero(
           tag: "${note.id}_content",
           child: EditableText(
+
             maxLines: null,
             onChanged: (s) {
               note?.content = s;
@@ -292,7 +293,7 @@ class AddNoteState extends State<AddNoteView> {
             style:
                 TextStyle(color: getTextColor(note.colorIndex), fontSize: 24),
             cursorColor: Colors.black,
-            // backgroundCursorColor: Colors.black,
+            backgroundCursorColor: Colors.transparent,
           ),
         );
     }
@@ -416,15 +417,18 @@ class AddNoteState extends State<AddNoteView> {
   }
 
   Widget _titleWidget() {
-    return Container(
+    return  Container(
       margin: EdgeInsets.symmetric(vertical: 15),
       width: double.infinity,
       color: getDarkColor(note?.colorIndex ?? 0) ?? Colors.black,
       child: Hero(
         tag: "${note.id}_title",
-        child: EditableText(
+        child: TextField(
+          autofocus: true,
+          maxLines: 1,
+
             controller: TextEditingController(text: note?.name ?? "")
-              ..selection = TextSelection.collapsed(offset: note.name.length),
+              ..selection = TextSelection.collapsed(offset: note?.name?.length??0),
             focusNode: _titleFocusNode,
             onChanged: (s) {
               note?.name = s;
