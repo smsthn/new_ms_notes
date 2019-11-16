@@ -3,11 +3,11 @@
 
 import 'dart:io';
 import 'package:image/image.dart';
-import 'package:new_ms_notes/Data/Entities/Note.dart';
+import 'package:new_new_msnotes/Data/Entities/Note.dart';
 
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-// import 'package:image_picker/image_picker.dart';
+//import 'package:image_picker/image_picker.dart';
 import 'package:image_picker_modern/image_picker_modern.dart';
 
 import 'package:camera/camera.dart';
@@ -46,7 +46,6 @@ class SaveImageHelper{
     //   });
      if(trynm != null && trynm == 4)return;
     var image ; try {
-
      image = await ImagePicker.pickImage(source: ImageSource.camera);
     } catch (e) {
       sleep(Duration(milliseconds: 200));
@@ -93,7 +92,7 @@ class SaveImageHelper{
     File file;
     file = await _getFile(); 
     Image i1 = decodeImage(_image.readAsBytesSync());
-    Image img = i1.width>this.width - 10? copyResize(i1,width:  this.width - 10):i1;
+    Image img = i1.width>this.width - 10? copyResize(i1,width: this.width -11):i1;
     file.writeAsBytesSync(encodeJpg(img));
   }
   
